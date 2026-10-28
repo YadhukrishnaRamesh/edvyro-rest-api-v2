@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: edvyro-internship-api
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /var/data
+# If deploying with SQLite, configure persistent storage mounted at /var/data.
+# Without a persistent disk, SQLite records may be lost after restart/redeploy.
