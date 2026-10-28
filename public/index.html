@@ -1,0 +1,354 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edvyro | Internship Portal</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f7fb;
+      color: #172033;
+    }
+
+    header {
+      background: #172554;
+      color: white;
+      padding: 25px 7%;
+    }
+
+    header h1 { margin: 0 0 8px; }
+    header p { margin: 0; color: #dbeafe; }
+
+    main {
+      max-width: 1100px;
+      margin: 28px auto;
+      padding: 0 18px;
+    }
+
+    .toolbar, .panel {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 22px;
+      box-shadow: 0 3px 12px #17255410;
+    }
+
+    input, select, textarea, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 7px;
+      font: inherit;
+    }
+
+    button {
+      background: #2563eb;
+      color: white;
+      border: 0;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:disabled { opacity: .6; cursor: wait; }
+
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 12px;
+    }
+
+    #internshipList {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 3px 12px #17255410;
+    }
+
+    .card h3 { margin-top: 0; color: #1d4ed8; }
+    .tag {
+      display: inline-block;
+      background: #dbeafe;
+      color: #1e40af;
+      padding: 5px 9px;
+      border-radius: 15px;
+      font-size: 12px;
+      margin: 3px 3px 3px 0;
+    }
+
+    .message { padding: 12px; border-radius: 7px; margin-bottom: 15px; }
+    .error { background: #fee2e2; color: #991b1b; }
+    .success { background: #dcfce7; color: #166534; }
+    .muted { color: #64748b; }
+    label { display: block; margin-top: 12px; font-weight: bold; }
+    footer { text-align: center; padding: 24px; color: #64748b; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Edvyro Internship Portal</h1>
+    <p>Explore opportunities, discover your skills, and apply online.</p>
+  </header>
+
+  <main>
+    <section class="toolbar">
+      <h2>Find your internship</h2>
+      <div class="filters">
+        <input id="search" placeholder="Search internships or skills">
+        <select id="domain">
+          <option value="">All domains</option>
+        </select>
+        <select id="mode">
+          <option value="">All work modes</option>
+          <option>Remote</option>
+          <option>Hybrid</option>
+          <option>On-site</option>
+        </select>
+      </div>
+      <button id="reloadBtn" type="button">Reload internships</button>
+    </section>
+
+    <div id="status" role="status" aria-live="polite">
+      Loading internships...
+    </div>
+
+    <section id="internshipList" aria-label="Internship listings"></section>
+
+    <section class="panel" id="application">
+      <h2>Apply for an internship</h2>
+      <p class="muted">Complete the form to submit your application.</p>
+      <div id="formMessage" role="status" aria-live="polite"></div>
+
+      <form id="applicationForm">
+        <label for="internshipId">Internship</label>
+        <select id="internshipId" required>
+          <option value="">Select an internship</option>
+        </select>
+
+        <label for="applicantName">Full name</label>
+        <input id="applicantName" required minlength="2" maxlength="80"
+          autocomplete="name" placeholder="Enter your name">
+
+        <label for="email">Email address</label>
+        <input id="email" type="email" required maxlength="254"
+          autocomplete="email" placeholder="you@example.com">
+
+        <label for="skills">Relevant skills</label>
+        <input id="skills" required maxlength="300"
+          placeholder="e.g. HTML, CSS, JavaScript">
+
+        <label for="coverLetter">Why are you applying?</label>
+        <textarea id="coverLetter" required minlength="20" maxlength="1500"
+          rows="4" placeholder="Write at least 20 characters"></textarea>
+
+        <button id="submitBtn" type="submit">Submit application</button>
+      </form>
+    </section>
+  </main>
+
+  <footer>Edvyro · Secure Application Integration</footer>
+
+  <script>
+    const statusBox = document.getElementById("status");
+    const list = document.getElementById("internshipList");
+    const domainSelect = document.getElementById("domain");
+    const modeSelect = document.getElementById("mode");
+    const internshipSelect = document.getElementById("internshipId");
+    const formMessage = document.getElementById("formMessage");
+
+    let internships = [];
+
+    function showMessage(element, message, type = "") {
+      element.className = type ? "message " + type : "";
+      element.textContent = message;
+    }
+
+    async function loadInternships() {
+      statusBox.className = "message";
+      statusBox.textContent = "Loading internships...";
+      list.replaceChildren();
+
+      try {
+        const response = await fetch("/api/integration-test-records");
+
+        if (!response.ok) {
+          throw new Error("Server returned HTTP " + response.status);
+        }
+
+        const data = await response.json();
+        internships = Array.isArray(data) ? data : data.internships;
+
+        if (!Array.isArray(internships)) {
+          throw new Error("Unexpected API response format.");
+        }
+
+        const domains = [...new Set(internships.map(item => item.domain))]
+          .filter(Boolean).sort();
+
+        domainSelect.replaceChildren(new Option("All domains", ""));
+        domains.forEach(domain =>
+          domainSelect.add(new Option(domain, domain))
+        );
+
+        internshipSelect.replaceChildren(
+          new Option("Select an internship", "")
+        );
+
+        internships.forEach(item => {
+          internshipSelect.add(
+            new Option(item.title + " (" + item.id + ")", item.id)
+          );
+        });
+
+        showMessage(statusBox,
+          internships.length + " internship(s) loaded successfully.",
+          "success");
+
+        renderInternships();
+      } catch (error) {
+        showMessage(statusBox,
+          "Could not load internships. Check that the API server is running, then retry. " +
+          error.message, "error");
+      }
+    }
+
+    function renderInternships() {
+      const query = document.getElementById("search").value
+        .trim().toLowerCase();
+      const selectedDomain = domainSelect.value;
+      const selectedMode = modeSelect.value;
+
+      const filtered = internships.filter(item => {
+        const searchable = [
+          item.title, item.domain, item.location, item.mode,
+          ...(Array.isArray(item.skills) ? item.skills : [])
+        ].join(" ").toLowerCase();
+
+        return searchable.includes(query) &&
+          (!selectedDomain || item.domain === selectedDomain) &&
+          (!selectedMode || item.mode === selectedMode);
+      });
+
+      list.replaceChildren();
+
+      if (!filtered.length) {
+        const empty = document.createElement("p");
+        empty.className = "muted";
+        empty.textContent = "No matching internships found.";
+        list.appendChild(empty);
+        return;
+      }
+
+      filtered.forEach(item => {
+        const card = document.createElement("article");
+        card.className = "card";
+
+        const title = document.createElement("h3");
+        title.textContent = item.title;
+
+        const domain = document.createElement("p");
+        domain.textContent = item.domain || "General";
+
+        const details = document.createElement("p");
+        details.textContent = (item.mode || item.workMode || "Not specified") +
+          " · " + (item.location || "Location not specified");
+
+        const skills = document.createElement("div");
+        (Array.isArray(item.skills) ? item.skills : []).forEach(skill => {
+          const tag = document.createElement("span");
+          tag.className = "tag";
+          tag.textContent = skill;
+          skills.appendChild(tag);
+        });
+
+        const openings = document.createElement("p");
+        openings.textContent = "Openings: " + (item.openings ?? "Not specified");
+
+        const apply = document.createElement("button");
+        apply.type = "button";
+        apply.textContent = "Apply now";
+        apply.addEventListener("click", () => {
+          internshipSelect.value = String(item.id);
+          document.getElementById("application").scrollIntoView({
+            behavior: "smooth"
+          });
+        });
+
+        card.append(title, domain, details, skills, openings, apply);
+        list.appendChild(card);
+      });
+    }
+
+    document.getElementById("search").addEventListener("input", renderInternships);
+    domainSelect.addEventListener("change", renderInternships);
+    modeSelect.addEventListener("change", renderInternships);
+    document.getElementById("reloadBtn").addEventListener("click", loadInternships);
+
+    document.getElementById("applicationForm").addEventListener("submit",
+      async event => {
+        event.preventDefault();
+        formMessage.textContent = "";
+
+        const application = {
+          internshipId: internshipSelect.value,
+          name: document.getElementById("applicantName").value.trim(),
+          email: document.getElementById("email").value.trim(),
+          skills: document.getElementById("skills").value.trim(),
+          coverLetter: document.getElementById("coverLetter").value.trim()
+        };
+
+        if (application.name.length < 2 ||
+            application.skills.length === 0 ||
+            application.coverLetter.length < 20) {
+          showMessage(formMessage,
+            "Please check your name, skills, and cover letter.", "error");
+          return;
+        }
+
+        const submitBtn = document.getElementById("submitBtn");
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Submitting...";
+
+        try {
+          const response = await fetch("/api/applications", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(application)
+          });
+
+          const result = await response.json().catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(result.error || result.message ||
+              "Application rejected (HTTP " + response.status + ").");
+          }
+
+          showMessage(formMessage,
+            result.message || "Application submitted successfully.",
+            "success");
+          event.target.reset();
+        } catch (error) {
+          showMessage(formMessage,
+            "Application could not be submitted: " + error.message, "error");
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Submit application";
+        }
+      }
+    );
+
+    loadInternships();
+  </script>
+</body>
+</html>
