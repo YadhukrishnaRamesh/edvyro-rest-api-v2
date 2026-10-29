@@ -1,4 +1,7 @@
-{"name":"edvyro-rest-api-persistent-data","version":"1.0.0","description":"Edvyro Milestone 3 REST API","main":"src/server.js","type":"commonjs","scripts":{"start":"node src/server.js"},"engines":{"node":">=18"},"dependencies": {
+{"name":"edvyro-rest-api-persistent-data","version":"1.0.0","description":"Edvyro Milestone 3 REST API","main":"src/server.js","type":"commonjs","scripts": {
+  "start": "node src/server.js",
+  "test": "node --test"
+},"engines":{"node":">=18"},"dependencies": {
   "better-sqlite3": "^11.8.1",
   "cors": "^2.8.5",
   "express": "^4.21.2",
